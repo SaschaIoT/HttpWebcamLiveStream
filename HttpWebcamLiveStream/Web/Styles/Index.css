@@ -1,0 +1,20 @@
+﻿body {
+    margin: 0px;
+    width: 100%;
+    height: 100%;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    color: white;
+}
+
+.video-frame-full-screen {
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    z-index: 0;
+}
+
+.video-frame {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}

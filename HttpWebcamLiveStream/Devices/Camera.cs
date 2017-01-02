@@ -18,6 +18,9 @@ using Windows.UI.Xaml.Controls;
 
 namespace HttpWebcamLiveStream.Devices
 {
+    /// <summary>
+    /// Camera: ELP 2.8mm wide angle lens 1080p HD USB Camera Module (ELP-USBFHD01M-L28)
+    /// </summary>
     public class Camera
     {
         public byte[] Frame { get; set; }

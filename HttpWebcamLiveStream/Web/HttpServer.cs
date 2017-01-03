@@ -55,7 +55,11 @@ namespace HttpWebcamLiveStream.Web
             }
             catch (Exception exception)
             {
-                HttpServerResponse.WriteResponseError(exception.Message, socket.OutputStream);
+                try
+                {
+                    HttpServerResponse.WriteResponseError(exception.Message, socket.OutputStream);
+                }
+                catch (Exception) { }                
             }
         }
 

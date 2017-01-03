@@ -1,19 +1,22 @@
-﻿var videoFrameContainerElement = document.getElementById("videoFrame");
+﻿var videoFrameElement = document.getElementById("videoFrame");
+var bodyElement = document.getElementsByTagName("body")[0];
 
-videoFrameContainerElement.addEventListener("dblclick", function (e) {
+videoFrameElement.addEventListener("dblclick", function (e) {
     toggleFullScreen();
 });
 
-videoFrameContainerElement.addEventListener("touchstart", function (e) {
+videoFrameElement.addEventListener("touchstart", function (e) {
     toggleFullScreen();
 });
 
 function toggleFullScreen() {
-    if (videoFrameContainerElement.classList.contains("video-frame")) {
-        videoFrameContainerElement.classList.add("video-frame-full-screen");
-        videoFrameContainerElement.classList.remove("video-frame");
+    if (videoFrameElement.classList.contains("video-frame")) {
+        videoFrameElement.classList.add("video-frame-full-screen");
+        videoFrameElement.classList.remove("video-frame");
+        bodyElement.classList.add("body-full-screen");
     } else {
-        videoFrameContainerElement.classList.add("video-frame");
-        videoFrameContainerElement.classList.remove("video-frame-full-screen");
+        videoFrameElement.classList.add("video-frame");
+        videoFrameElement.classList.remove("video-frame-full-screen");
+        bodyElement.classList.remove("body-full-screen");
     }
 }

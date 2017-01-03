@@ -96,40 +96,40 @@ namespace HttpWebcamLiveStream.Devices
 
         public void FrameArrived(MediaFrameReader sender, MediaFrameArrivedEventArgs eventArgs)
         {
-            var frame = _mediaFrameReader.TryAcquireLatestFrame();
-
-            if (frame == null
-                || frame.VideoMediaFrame == null
-                || frame.VideoMediaFrame.SoftwareBitmap == null)
-                return;
-
-            using (var stream = new InMemoryRandomAccessStream())
+            using (var frame = _mediaFrameReader.TryAcquireLatestFrame())
             {
-                using (var bitmap = SoftwareBitmap.Convert(frame.VideoMediaFrame.SoftwareBitmap, BitmapPixelFormat.Rgba8, BitmapAlphaMode.Premultiplied))
+                if (frame == null
+                    || frame.VideoMediaFrame == null
+                    || frame.VideoMediaFrame.SoftwareBitmap == null)
+                    return;
+
+                using (var stream = new InMemoryRandomAccessStream())
                 {
-                    var imageTask = BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream, _imageQuality).AsTask();
-                    imageTask.Wait();
-                    var encoder = imageTask.Result;
-                    encoder.SetSoftwareBitmap(bitmap);
-
-                    //Rotate image 180 degrees
-                    //var transform = encoder.BitmapTransform;
-                    //transform.Rotation = BitmapRotation.Clockwise180Degrees;
-
-                    var flushTask = encoder.FlushAsync().AsTask();
-                    flushTask.Wait();
-
-                    using (var asStream = stream.AsStream())
+                    using (var bitmap = SoftwareBitmap.Convert(frame.VideoMediaFrame.SoftwareBitmap, BitmapPixelFormat.Rgba8, BitmapAlphaMode.Premultiplied))
                     {
-                        asStream.Position = 0;
+                        var imageTask = BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream, _imageQuality).AsTask();
+                        imageTask.Wait();
+                        var encoder = imageTask.Result;
+                        encoder.SetSoftwareBitmap(bitmap);
 
-                        var image = new byte[asStream.Length];
-                        asStream.Read(image, 0, image.Length);
+                        //Rotate image 180 degrees
+                        //var transform = encoder.BitmapTransform;
+                        //transform.Rotation = BitmapRotation.Clockwise180Degrees;
 
-                        Frame = image;
+                        var flushTask = encoder.FlushAsync().AsTask();
+                        flushTask.Wait();
 
-                        encoder = null;
-                        bitmap.Dispose();
+                        using (var asStream = stream.AsStream())
+                        {
+                            asStream.Position = 0;
+
+                            var image = new byte[asStream.Length];
+                            asStream.Read(image, 0, image.Length);
+
+                            Frame = image;
+
+                            encoder = null;
+                        }
                     }
                 }
             }

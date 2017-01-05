@@ -1,9 +1,9 @@
 ﻿//Maximum frames of the video stream per second. The less frames the less network traffic.
 //(the current server side webcam stream delivers 30 frames, so I limit the frames to 30)
-var maxVideoFrames = 30;
+var maximumVideoFramesPerSecond = 30;
 
 var xhttpRequestTimeout = 2000;
-var videoFrameTimeout = 1000.0 / maxVideoFrames;
+var videoFrameTimeout = 1000.0 / maximumVideoFramesPerSecond;
 var lastVideoFrameTime = new Date();
 
 function GetVideoFrame() {

@@ -39,10 +39,10 @@ namespace HttpWebcamLiveStream.Web
 
         private async void ProcessRequest(StreamSocketListener streamSocktetListener, StreamSocketListenerConnectionReceivedEventArgs eventArgs)
         {
-            var socket = eventArgs.Socket;
-
             try
             {
+                var socket = eventArgs.Socket;
+
                 //Read request
                 var relativeUrl = await ReadRequest(socket);
 

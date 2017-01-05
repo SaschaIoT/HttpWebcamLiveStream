@@ -53,14 +53,7 @@ namespace HttpWebcamLiveStream.Web
                 socket.OutputStream.Dispose();
                 socket.Dispose();
             }
-            catch (Exception exception)
-            {
-                try
-                {
-                    HttpServerResponse.WriteResponseError(exception.Message, socket.OutputStream);
-                }
-                catch (Exception) { }                
-            }
+            catch (Exception) { }
         }
 
         private async Task<string> ReadRequest(StreamSocket socket)

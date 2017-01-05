@@ -2,8 +2,8 @@
 //(the current server side webcam stream delivers 30 frames, so I limit the frames to 30)
 var maximumVideoFramesPerSecond = 30;
 
-var xhttpRequestTimeout = 2000;
-var videoFrameTimeout = 1000.0 / maximumVideoFramesPerSecond;
+var maximumVideoFramesPerSecondTimeout = 1000.0 / maximumVideoFramesPerSecond;
+var getVideoFrameTimeout = 2000;
 var lastVideoFrameTime = new Date();
 
 function GetVideoFrame() {
@@ -24,7 +24,7 @@ function GetVideoFrame() {
         }
     }
 
-    xhr.timeout = xhttpRequestTimeout;
+    xhr.timeout = getVideoFrameTimeout;
     xhr.ontimeout = function () {
         GetVideoFrameAfterTimeout();
     }
@@ -41,13 +41,13 @@ function GetVideoFrame() {
 }
 
 function GetVideoFrameAfterTimeout() {
-    var lastVideoFrameTimeToLast = new Date() - lastVideoFrameTime;
+    var videoFrameTimeToLastFrame = new Date() - lastVideoFrameTime;
 
-    if (lastVideoFrameTimeToLast >= videoFrameTimeout) {
+    if (videoFrameTimeToLastFrame >= maximumVideoFramesPerSecondTimeout) {
         setTimeout(function () { GetVideoFrame(); }, 0);
 
     } else {
-        var nextVideoFrameTimeout = videoFrameTimeout - lastVideoFrameTimeToLast;
+        var nextVideoFrameTimeout = maximumVideoFramesPerSecondTimeout - videoFrameTimeToLastFrame;
         setTimeout(function () { GetVideoFrame(); }, nextVideoFrameTimeout);
     }
 }

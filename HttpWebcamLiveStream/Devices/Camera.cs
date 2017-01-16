@@ -105,7 +105,7 @@ namespace HttpWebcamLiveStream.Devices
 
             using (var stream = new InMemoryRandomAccessStream())
             {
-                using (var bitmap = SoftwareBitmap.Convert(frame.VideoMediaFrame.SoftwareBitmap, BitmapPixelFormat.Rgba8, BitmapAlphaMode.Premultiplied))
+                using (var bitmap = SoftwareBitmap.Convert(frame.VideoMediaFrame.SoftwareBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore))
                 {
                     var imageTask = BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream, _imageQuality).AsTask();
                     imageTask.Wait();
@@ -118,7 +118,7 @@ namespace HttpWebcamLiveStream.Devices
 
                     var flushTask = encoder.FlushAsync().AsTask();
                     flushTask.Wait();
-
+                    
                     using (var asStream = stream.AsStream())
                     {
                         asStream.Position = 0;

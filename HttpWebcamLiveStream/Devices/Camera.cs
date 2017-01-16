@@ -63,7 +63,7 @@ namespace HttpWebcamLiveStream.Devices
                 var mediaFrameSource = _mediaCapture.FrameSources.First().Value;
                 var videoDeviceController = mediaFrameSource.Controller.VideoDeviceController;
 
-                videoDeviceController.DesiredOptimization = Windows.Media.Devices.MediaCaptureOptimization.Quality;
+                videoDeviceController.DesiredOptimization = Windows.Media.Devices.MediaCaptureOptimization.Latency;
                 videoDeviceController.PrimaryUse = Windows.Media.Devices.CaptureUse.Video;
 
                 //Set backlight compensation to min (otherwise there are problems with strong light sources)

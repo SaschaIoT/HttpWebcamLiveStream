@@ -1,5 +1,4 @@
 ﻿//Maximum frames of the video stream per second. The less frames the less network traffic.
-//(the current server side webcam stream delivers 30 frames, so I limit the frames to 30)
 var maximumVideoFramesPerSecond = 30;
 
 var maximumVideoFramesPerSecondTimeout = 1000.0 / maximumVideoFramesPerSecond;

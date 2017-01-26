@@ -35,7 +35,6 @@ namespace HttpWebcamLiveStream
         {
             var camera = new Camera();
             await camera.Initialize();
-            camera.FrameArrived(null, null);
 
             var httpServer = new HttpServer(camera);
             httpServer.Start();

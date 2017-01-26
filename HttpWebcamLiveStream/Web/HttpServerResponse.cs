@@ -11,8 +11,6 @@ namespace HttpWebcamLiveStream.Web
 {
     public static class HttpServerResponse
     {
-        private const string ALLOW_ORIGIN_DOMAIN = "http://minwinpc";
-
         public static void WriteResponseError(string text,
                                               IOutputStream outputStream)
         {
@@ -84,8 +82,7 @@ namespace HttpWebcamLiveStream.Web
 
             var responseHeader = new StringBuilder();
             responseHeader.Append($"{HttpStatusCodeHelper.GetHttpStatusCodeForHttpHeader(httpStatusCode)}\r\n");
-            responseHeader.Append($"Access-Control-Allow-Origin: {ALLOW_ORIGIN_DOMAIN}\r\n");
-
+            
             if (httpStatusCode != HttpStatusCode.HttpCode204)
             {
                 responseHeader.Append($"Content-Type: {MimeTypeHelper.GetHttpContentType(mimeType.Value)}\r\n");

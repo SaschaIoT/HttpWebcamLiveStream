@@ -10,7 +10,7 @@ function GetVideoFrame() {
     lastVideoFrameTime = new Date();
 
     var xhr = new XMLHttpRequest();
-    xhr.open("GET", "http://minwinpc/VideoFrame" + new Date().getTime().toString() + ".html", true);
+    xhr.open("GET", "VideoFrame" + new Date().getTime().toString() + ".html", true);
     xhr.responseType = "blob";
 
     xhr.onreadystatechange = function () {

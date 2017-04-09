@@ -10,19 +10,9 @@ function GetVideoFrame() {
     lastVideoFrameTime = new Date();
 
     var xhr = new XMLHttpRequest();
-    xhr.open("GET", "VideoFrame" + new Date().getTime().toString() + ".html", true);
-    xhr.responseType = "blob";
-
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState == 4) {
-            if (xhr.status === 200) {
-                var urlCreator = window.URL || window.webkitURL;
-                var imageUrl = urlCreator.createObjectURL(xhr.response);
-                document.querySelector("#videoFrame").src = imageUrl;
-            }
-        }
-    }
-
+    xhr.open("GET", "VideoFrame" + new Date().getTime().toString(), true);
+    xhr.responseType = "arraybuffer";
+    
     xhr.timeout = getVideoFrameTimeout;
     xhr.ontimeout = function () {
         GetVideoFrameAfterTimeout();
@@ -33,6 +23,13 @@ function GetVideoFrame() {
     }
 
     xhr.onload = function () {
+
+        if (xhr.status === 200) {
+            var blob = new Blob([xhr.response], { type: "image/jpeg" });
+            var url = webkitURL.createObjectURL(blob);
+            document.querySelector("#videoFrame").src = url;
+        }
+
         GetVideoFrameAfterTimeout();
     }
 

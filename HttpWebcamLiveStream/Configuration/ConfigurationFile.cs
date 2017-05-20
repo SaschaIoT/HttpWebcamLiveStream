@@ -141,7 +141,7 @@ namespace HttpWebcamLiveStream.Configuration
                                 VideoResolution = VideoResolution.SD640_480,
                                 VideoSubtype = (VideoSubtype)videoSubType,
                                 VideoQuality = 0.6,
-                                UsedThreads = 4
+                                UsedThreads = 1
                             };
 
                             break;

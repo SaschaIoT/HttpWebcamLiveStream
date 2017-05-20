@@ -3,20 +3,67 @@
 <head>
     <title>HttpWebcamLiveStream</title>
 
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
     <link rel="stylesheet" href="Styles/Index.css">
 </head>
 <body>
 
+    <div id="video-settings" class="video-settings video-settings-hide">
+        <table>
+            <tr>
+                <td>Video resolution: </td>
+                <td>
+                    <select id="videoResolution"></select>
+                </td>
+            </tr>
+            <tr>
+                <td>Video subtype: </td>
+                <td>
+                    <select id="videoSubtype"></select>
+                </td>
+            </tr>
+            <tr>
+                <td>Video quality</td>
+                <td>
+                    <select id="videoQuality">
+                        <option value="0.1">10%</option>
+                        <option value="0.2">20%</option>
+                        <option value="0.3">30%</option>
+                        <option value="0.4">40%</option>
+                        <option value="0.5">50%</option>
+                        <option value="0.6">60%</option>
+                        <option value="0.7">70%</option>
+                        <option value="0.8">80%</option>
+                        <option value="0.9">90%</option>
+                        <option value="1">100%</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>Used threads</td>
+                <td>
+                    <select id="usedThreads">
+                        <option value="1">1 Thread</option>
+                        <option value="2">2 Threads</option>
+                        <option value="3">3 Threads</option>
+                        <option value="4">4 Threads</option>
+                    </select>
+                </td>
+            </tr>
+        </table>
+
+        <input id="save" type="button" value="Save" />
+
+        <br />
+        <br />
+    </div>
+
     <img id="videoFrame" class="video-frame" src="">
 
-    <table>
-        <tr>
-            <td></td>
-            <td></td>
-        </tr>
-    </table>
-
+    <script src="JavaScript/Controls.js"></script>
+    <script src="JavaScript/VideoSetting.js"></script>
     <script src="JavaScript/Fullscreen.js"></script>
+    <script src="JavaScript/WebSocketHelper.js"></script>
     <script src="JavaScript/Camera.js"></script>
 </body>
 </html>

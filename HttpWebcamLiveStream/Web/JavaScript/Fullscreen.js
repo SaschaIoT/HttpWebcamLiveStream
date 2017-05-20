@@ -14,9 +14,17 @@ function toggleFullScreen() {
         videoFrameElement.classList.add("video-frame-full-screen");
         videoFrameElement.classList.remove("video-frame");
         bodyElement.classList.add("body-full-screen");
+
+        if (showControls === true) {
+            document.getElementById("video-settings").classList.add("video-settings-hide");
+        }
     } else {
         videoFrameElement.classList.add("video-frame");
         videoFrameElement.classList.remove("video-frame-full-screen");
         bodyElement.classList.remove("body-full-screen");
+
+        if (showControls === true) {
+            document.getElementById("video-settings").classList.remove("video-settings-hide");
+        }
     }
 }

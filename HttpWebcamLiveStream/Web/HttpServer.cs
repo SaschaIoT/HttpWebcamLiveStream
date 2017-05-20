@@ -1,13 +1,11 @@
-﻿using HttpWebcamLiveStream.Devices;
+﻿using HttpWebcamLiveStream.Configuration;
+using HttpWebcamLiveStream.Devices;
 using HttpWebcamLiveStream.Helper;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Windows.Data.Json;
 using Windows.Networking.Sockets;
 using Windows.Storage.Streams;
 
@@ -44,10 +42,10 @@ namespace HttpWebcamLiveStream.Web
                 var socket = eventArgs.Socket;
 
                 //Read request
-                var relativeUrl = await ReadRequest(socket);
+                var request = await ReadRequest(socket);
 
                 //Write Response
-                await WriteResponse(relativeUrl, socket.OutputStream);
+                await WriteResponse(request, socket);
 
                 socket.InputStream.Dispose();
                 socket.OutputStream.Dispose();
@@ -56,58 +54,86 @@ namespace HttpWebcamLiveStream.Web
             catch (Exception) { }
         }
 
-        private async Task<string> ReadRequest(StreamSocket socket)
+        private async Task<HttpServerRequest> ReadRequest(StreamSocket socket)
         {
             var request = string.Empty;
-            
-            using (var inputStream = socket.InputStream)
+            var error = false;
+
+            var inputStream = socket.InputStream;
+
+            var data = new byte[BUFFER_SIZE];
+            var buffer = data.AsBuffer();
+
+            var startReadRequest = DateTime.Now;
+            while (!HttpGetRequestHasUrl(request))
             {
-                var data = new byte[BUFFER_SIZE];
-                var buffer = data.AsBuffer();
-
-                var startReadRequest = DateTime.Now;
-                while (!HttpGetRequestHasUrl(request))
+                if (DateTime.Now.Subtract(startReadRequest) >= TimeSpan.FromMilliseconds(5000))
                 {
-                    if (DateTime.Now.Subtract(startReadRequest) >= TimeSpan.FromMilliseconds(5000))
-                    {
-                        throw new TaskCanceledException("Request timeout.");
-                    }
-
-                    var inputStreamReadTask = inputStream.ReadAsync(buffer, BUFFER_SIZE, InputStreamOptions.Partial);
-                    var timeout = TimeSpan.FromMilliseconds(1000);
-                    await TaskHelper.CancelTaskAfterTimeout(ct => inputStreamReadTask.AsTask(ct), timeout);
-
-                    request += Encoding.UTF8.GetString(data, 0, data.Length);
+                    error = true;
+                    return new HttpServerRequest(null, true);
                 }
+
+                var inputStreamReadTask = inputStream.ReadAsync(buffer, BUFFER_SIZE, InputStreamOptions.Partial);
+                var timeout = TimeSpan.FromMilliseconds(1000);
+                await TaskHelper.WithTimeoutAfterStart(ct => inputStreamReadTask.AsTask(ct), timeout);
+
+                request += Encoding.UTF8.GetString(data, 0, (int)inputStreamReadTask.AsTask().Result.Length);
             }
 
-            var requestMethod = request.Split('\n')[0];
-            var requestParts = requestMethod.Split(' ');
-            var relativeUrl = requestParts.Length > 1 ? requestParts[1] : string.Empty;
-
-            return relativeUrl;
+            return new HttpServerRequest(request, error);
         }
 
-        private async Task WriteResponse(string relativeUrl, IOutputStream outputStream)
+        private async Task WriteResponse(HttpServerRequest request, StreamSocket socket)
         {
-            var relativeUrlLower = relativeUrl.ToLowerInvariant();
+            var relativeUrlLower = request.Url.ToLowerInvariant();
+            var outputStream = socket.OutputStream;
 
             //Get javascript files
             if (relativeUrlLower.StartsWith("/javascript"))
             {
-                await HttpServerResponse.WriteResponseFile(ToFolderPath(relativeUrl), HttpContentType.JavaScript, outputStream);
+                await HttpServerResponse.WriteResponseFile(ToFolderPath(request.Url), HttpContentType.JavaScript, outputStream);
             }
             //Get css style files
             else if (relativeUrlLower.StartsWith("/styles"))
             {
-                await HttpServerResponse.WriteResponseFile(ToFolderPath(relativeUrl), HttpContentType.Css, outputStream);
+                await HttpServerResponse.WriteResponseFile(ToFolderPath(request.Url), HttpContentType.Css, outputStream);
+            }
+            //Get video setting
+            else if (relativeUrlLower.StartsWith("/videosetting"))
+            {
+                HttpServerResponse.WriteResponseJson(ConfigurationFile.VideoSetting.Stringify(), outputStream);
+            }
+            //Get supported video settings
+            else if (relativeUrlLower.StartsWith("/supportedvideosettings"))
+            {
+                HttpServerResponse.WriteResponseJson(ConfigurationFile.VideoSettingsSupported.Stringify(), outputStream);
+            }
+            //Set video settings
+            else if (relativeUrlLower.StartsWith("/savevideosetting"))
+            {
+                await _camera.Stop();
+
+                var videoSetting = new VideoSetting
+                {
+                    VideoSubtype = VideoSubtypeHelper.Get(request.Body["VideoSubtype"].GetString()),
+                    VideoResolution = (VideoResolution)request.Body["VideoResolution"].GetNumber(),
+                    VideoQuality = request.Body["VideoQuality"].GetNumber(),
+                    UsedThreads = (int)request.Body["UsedThreads"].GetNumber()
+                };
+
+                await ConfigurationFile.Write(videoSetting);
+                await _camera.Initialize(videoSetting);
+                _camera.Start();
+
+                HttpServerResponse.WriteResponseOk(outputStream);
             }
             //Get current camera frame
             else if (relativeUrlLower.StartsWith("/videoframe"))
             {
                 if (_camera.Frame != null)
                 {
-                    HttpServerResponse.WriteResponseFile(_camera.Frame, HttpContentType.Jpeg, outputStream);
+                    var webSocket = new WebSocket(socket, request, _camera);
+                    await webSocket.Start();
                 }
                 else
                 {
@@ -123,7 +149,7 @@ namespace HttpWebcamLiveStream.Web
         
         private bool HttpGetRequestHasUrl(string httpRequest)
         {
-            var regex = new Regex("^.*GET.*HTTP.*\\r\\n.*$", RegexOptions.Multiline);
+            var regex = new Regex("GET.*HTTP.*\r\n", RegexOptions.IgnoreCase);
             return regex.IsMatch(httpRequest.ToUpper());
         }
 

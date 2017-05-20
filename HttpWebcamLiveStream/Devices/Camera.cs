@@ -1,5 +1,7 @@
-﻿using HttpWebcamLiveStream.Helper;
+﻿using HttpWebcamLiveStream.Configuration;
+using HttpWebcamLiveStream.Helper;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -9,13 +11,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.Core;
 using Windows.Graphics.Imaging;
-using Windows.Media;
 using Windows.Media.Capture;
 using Windows.Media.Capture.Frames;
-using Windows.Media.MediaProperties;
 using Windows.Storage.Streams;
 using Windows.UI.Core;
-using Windows.UI.Xaml.Controls;
 
 namespace HttpWebcamLiveStream.Devices
 {
@@ -25,22 +24,30 @@ namespace HttpWebcamLiveStream.Devices
     public class Camera
     {
         public byte[] Frame { get; set; }
+        
         private MediaCapture _mediaCapture;
         private MediaFrameReader _mediaFrameReader;
-
-        //Check if camera support resolution and subtyp before change
-        private const int VIDEO_WIDTH = 640;
-        private const int VIDEO_HEIGHT = 480;
-        private const string VIDEO_SUBTYP = "YUY2";
-        private const double IMAGE_QUALITY_PERCENT = 0.8d;
+        
         private BitmapPropertySet _imageQuality;
 
-        public async Task Initialize()
+        private int _threadsCount = 0;
+        private int _stoppedThreads = 0;
+        private bool _stopThreads = false;
+
+        private volatile Stopwatch _lastFrameAdded = new Stopwatch();
+        private volatile object _lastFrameAddedLock = new object();
+
+        public async Task Initialize(VideoSetting videoSetting)
         {
             await CoreApplication.MainView.CoreWindow.Dispatcher.RunAndAwaitAsync(CoreDispatcherPriority.Normal, async () =>
             {
+                _threadsCount = videoSetting.UsedThreads;
+                _stoppedThreads = videoSetting.UsedThreads;
+
+                _lastFrameAdded.Start();
+
                 _imageQuality = new BitmapPropertySet();
-                var imageQualityValue = new BitmapTypedValue(IMAGE_QUALITY_PERCENT, Windows.Foundation.PropertyType.Single);
+                var imageQualityValue = new BitmapTypedValue(videoSetting.VideoQuality, Windows.Foundation.PropertyType.Single);
                 _imageQuality.Add("ImageQuality", imageQualityValue);
 
                 _mediaCapture = new MediaCapture();
@@ -66,13 +73,7 @@ namespace HttpWebcamLiveStream.Devices
 
                 videoDeviceController.DesiredOptimization = Windows.Media.Devices.MediaCaptureOptimization.Quality;
                 videoDeviceController.PrimaryUse = Windows.Media.Devices.CaptureUse.Video;
-
-                //Set backlight compensation to min (otherwise there are problems with strong light sources)
-                if (videoDeviceController.BacklightCompensation.Capabilities.Supported)
-                {
-                    videoDeviceController.BacklightCompensation.TrySetValue(videoDeviceController.BacklightCompensation.Capabilities.Min);
-                }
-
+                
                 //Set exposure (auto light adjustment)
                 if (_mediaCapture.VideoDeviceController.Exposure.Capabilities.Supported
                     && _mediaCapture.VideoDeviceController.Exposure.Capabilities.AutoModeSupported)
@@ -80,64 +81,139 @@ namespace HttpWebcamLiveStream.Devices
                     _mediaCapture.VideoDeviceController.Exposure.TrySetAuto(true);
                 }
 
+                var videoResolutionWidthHeight = VideoResolutionWidthHeight.Get(videoSetting.VideoResolution);
+                var videoSubType = VideoSubtypeHelper.Get(videoSetting.VideoSubtype);
+
                 //Set resolution, frame rate and video subtyp
-                var videoFormat = mediaFrameSource.SupportedFormats.First(sf => sf.VideoFormat.Width == VIDEO_WIDTH
-                                                                                && sf.VideoFormat.Height == VIDEO_HEIGHT
-                                                                                && sf.Subtype == VIDEO_SUBTYP);
+                var videoFormat = mediaFrameSource.SupportedFormats.Where(sf => sf.VideoFormat.Width == videoResolutionWidthHeight.Width
+                                                                                && sf.VideoFormat.Height == videoResolutionWidthHeight.Height
+                                                                                && sf.Subtype == videoSubType)
+                                                                    .OrderByDescending(m => m.FrameRate.Numerator / m.FrameRate.Denominator)
+                                                                    .First();
 
                 await mediaFrameSource.SetFormatAsync(videoFormat);
 
                 _mediaFrameReader = await _mediaCapture.CreateFrameReaderAsync(mediaFrameSource);
-
-                //If debugger is attached you can't get frames from the camera, because the BitmapEncoder
-                //has a bug and not dispose correctly. This results in an System.OutOfMemoryException
-                if (!Debugger.IsAttached)
-                {
-                    _mediaFrameReader.FrameArrived += FrameArrived;
-
-                    await _mediaFrameReader.StartAsync();
-                }
+                await _mediaFrameReader.StartAsync();
             });
         }
 
-        public void FrameArrived(MediaFrameReader sender, MediaFrameArrivedEventArgs eventArgs)
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void GarbageCollectorCanWorkHere() { }
+
+        private void ProcessFrames()
         {
-            var frame = _mediaFrameReader.TryAcquireLatestFrame();
+            _stoppedThreads--;
 
-            if (frame == null
-                || frame.VideoMediaFrame == null
-                || frame.VideoMediaFrame.SoftwareBitmap == null)
-                return;
-
-            using (var stream = new InMemoryRandomAccessStream())
+            while (_stopThreads == false)
             {
-                using (var bitmap = SoftwareBitmap.Convert(frame.VideoMediaFrame.SoftwareBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore))
+                try
                 {
-                    var imageTask = BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream, _imageQuality).AsTask();
-                    imageTask.Wait();
-                    var encoder = imageTask.Result;
-                    encoder.SetSoftwareBitmap(bitmap);
-
-                    //Rotate image 180 degrees
-                    //var transform = encoder.BitmapTransform;
-                    //transform.Rotation = BitmapRotation.Clockwise180Degrees;
-
-                    var flushTask = encoder.FlushAsync().AsTask();
-                    flushTask.Wait();
+                    GarbageCollectorCanWorkHere();
                     
-                    using (var asStream = stream.AsStream())
+                    var frame = _mediaFrameReader.TryAcquireLatestFrame();
+
+                    var frameDuration = new Stopwatch();
+                    frameDuration.Start();
+
+                    if (frame == null
+                        || frame.VideoMediaFrame == null
+                        || frame.VideoMediaFrame.SoftwareBitmap == null)
+                        continue;
+
+                    using (var stream = new InMemoryRandomAccessStream())
                     {
-                        asStream.Position = 0;
+                        using (var bitmap = SoftwareBitmap.Convert(frame.VideoMediaFrame.SoftwareBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore))
+                        {
+                            var imageTask = BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream, _imageQuality).AsTask();
+                            imageTask.Wait();
+                            var encoder = imageTask.Result;
+                            encoder.SetSoftwareBitmap(bitmap);
 
-                        var image = new byte[asStream.Length];
-                        asStream.Read(image, 0, image.Length);
+                            //Rotate image 180 degrees
+                            var transform = encoder.BitmapTransform;
+                            transform.Rotation = BitmapRotation.Clockwise180Degrees;
 
-                        Frame = image;
+                            var flushTask = encoder.FlushAsync().AsTask();
+                            flushTask.Wait();
 
-                        encoder = null;
+                            using (var asStream = stream.AsStream())
+                            {
+                                asStream.Position = 0;
+
+                                var image = new byte[asStream.Length];
+                                asStream.Read(image, 0, image.Length);
+
+                                lock (_lastFrameAddedLock)
+                                {
+                                    if (_lastFrameAdded.Elapsed.Subtract(frameDuration.Elapsed) > TimeSpan.Zero)
+                                    {
+                                        Frame = image;
+
+                                        _lastFrameAdded = frameDuration;
+                                    }
+                                }
+
+                                encoder = null;
+                            }
+                        }
                     }
                 }
+                catch (ObjectDisposedException) { }
             }
+
+            _stoppedThreads++;
+        }
+
+        public void Start()
+        {
+            for (int workerNumber = 0; workerNumber < _threadsCount; workerNumber++)
+            {
+                Task.Factory.StartNew(() =>
+                {
+                    ProcessFrames();
+
+                }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default)
+                .AsAsyncAction()
+                .AsTask();
+            }
+        }
+
+        public async Task Stop()
+        {
+            _stopThreads = true;
+            
+            SpinWait.SpinUntil(() => { return _threadsCount == _stoppedThreads; });
+
+            await _mediaFrameReader.StopAsync();
+
+            _stopThreads = false;
+        }
+
+        public async Task<List<MediaFrameFormat>> GetMediaFrameFormatsAsync()
+        {
+            var mediaFrameFormats = new List<MediaFrameFormat>();
+
+            await CoreApplication.MainView.CoreWindow.Dispatcher.RunAndAwaitAsync(CoreDispatcherPriority.Normal, async () =>
+            {
+                var mediaCapture = new MediaCapture();
+
+                var settings = new MediaCaptureInitializationSettings()
+                {
+                    MemoryPreference = MediaCaptureMemoryPreference.Cpu,
+                    StreamingCaptureMode = StreamingCaptureMode.Video
+                };
+
+                await mediaCapture.InitializeAsync(settings);
+
+                var mediaFrameSource = mediaCapture.FrameSources.First().Value;
+
+                mediaFrameFormats = mediaFrameSource.SupportedFormats.ToList();
+
+                mediaCapture.Dispose();
+            });
+
+            return mediaFrameFormats;
         }
     }
 }

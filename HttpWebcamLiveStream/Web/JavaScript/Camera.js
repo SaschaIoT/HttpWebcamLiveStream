@@ -1,51 +1,70 @@
-﻿//Maximum frames of the video stream per second. The less frames the less network traffic.
-var maximumVideoFramesPerSecond = 30;
+﻿var webSocketVideoFrame;
+var frameTime;
 
-var maximumVideoFramesPerSecondTimeout = 1000.0 / maximumVideoFramesPerSecond;
-var getVideoFrameTimeout = 2000;
-var lastVideoFrameTime = new Date();
+function GetVideoFrames() {
 
-function GetVideoFrame() {
+    webSocketVideoFrame = new WebSocket('ws://' + location.host + "/VideoFrame");
+    webSocketVideoFrame.binaryType = "arraybuffer";
 
-    lastVideoFrameTime = new Date();
+    webSocketVideoFrame.onopen = function () {
+        webSocketHelper.waitUntilWebsocketReady(function () {
+            webSocketVideoFrame.send(JSON.stringify({ command: "VideoFrame" }));
+        }, webSocketVideoFrame, 0);
+    };
 
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", "VideoFrame" + new Date().getTime().toString(), true);
-    xhr.responseType = "arraybuffer";
-    
-    xhr.timeout = getVideoFrameTimeout;
-    xhr.ontimeout = function () {
-        GetVideoFrameAfterTimeout();
+    webSocketVideoFrame.onmessage = function () {
+
+        var bytearray = new Uint8Array(event.data);
+
+        var blob = new Blob([event.data], { type: "image/jpeg" });
+        var url = createObjectURL(blob);
+        document.querySelector("#videoFrame").src = url;
+
+        webSocketHelper.waitUntilWebsocketReady(function () {
+            webSocketVideoFrame.send(JSON.stringify({ command: "VideoFrame" }));
+        }, webSocketVideoFrame, 0);
+
+        frameTime = new Date().getTime();
+    };
+}
+
+function createObjectURL(blob) {
+    if (window.webkitURL) {
+        return window.webkitURL.createObjectURL(blob);
+    } else if (window.URL && window.URL.createObjectURL) {
+        return window.URL.createObjectURL(blob);
+    } else {
+        return null;
+    }
+}
+
+function KeepAliveGetVideoFrames() {
+
+    var duration = 0;
+    if (frameTime !== undefined) {
+        duration = new Date().getTime() - frameTime
     }
 
-    xhr.onerror = function () {
-        GetVideoFrameAfterTimeout();
-    }
+    if (frameTime !== undefined
+        && duration <= 1000) {
 
-    xhr.onload = function () {
+        setTimeout(function () {
+            KeepAliveGetVideoFrames();
+        }, 100);
+    } else {
 
-        if (xhr.status === 200) {
-            var blob = new Blob([xhr.response], { type: "image/jpeg" });
-            var url = webkitURL.createObjectURL(blob);
-            document.querySelector("#videoFrame").src = url;
+        if (webSocketVideoFrame !== undefined) {
+            try {
+                webSocketVideoFrame.close();
+            } catch (e) { }
         }
 
-        GetVideoFrameAfterTimeout();
-    }
+        GetVideoFrames();
 
-    xhr.send();
-}
-
-function GetVideoFrameAfterTimeout() {
-    var videoFrameTimeToLastFrame = new Date() - lastVideoFrameTime;
-
-    if (videoFrameTimeToLastFrame >= maximumVideoFramesPerSecondTimeout) {
-        setTimeout(function () { GetVideoFrame(); }, 0);
-
-    } else {
-        var nextVideoFrameTimeout = maximumVideoFramesPerSecondTimeout - videoFrameTimeToLastFrame;
-        setTimeout(function () { GetVideoFrame(); }, nextVideoFrameTimeout);
+        setTimeout(function () {
+            KeepAliveGetVideoFrames();
+        }, 4000);
     }
 }
 
-GetVideoFrame();
+KeepAliveGetVideoFrames();

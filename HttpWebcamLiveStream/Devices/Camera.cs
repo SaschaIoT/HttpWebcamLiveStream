@@ -130,9 +130,9 @@ namespace HttpWebcamLiveStream.Devices
                             var encoder = imageTask.Result;
                             encoder.SetSoftwareBitmap(bitmap);
 
-                            //Rotate image 180 degrees
-                            var transform = encoder.BitmapTransform;
-                            transform.Rotation = BitmapRotation.Clockwise180Degrees;
+                            ////Rotate image 180 degrees
+                            //var transform = encoder.BitmapTransform;
+                            //transform.Rotation = BitmapRotation.Clockwise180Degrees;
 
                             var flushTask = encoder.FlushAsync().AsTask();
                             flushTask.Wait();

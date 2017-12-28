@@ -29,10 +29,9 @@ function GetVideoFrames() {
 }
 
 function createObjectURL(blob) {
-    if (window.webkitURL) {
-        return window.webkitURL.createObjectURL(blob);
-    } else if (window.URL && window.URL.createObjectURL) {
-        return window.URL.createObjectURL(blob);
+    var URL = window.URL || window.webkitURL;
+    if (URL && URL.createObjectURL) {
+        return URL.createObjectURL(blob);
     } else {
         return null;
     }

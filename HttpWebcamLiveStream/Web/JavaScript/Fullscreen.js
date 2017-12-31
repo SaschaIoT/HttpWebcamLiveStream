@@ -7,7 +7,7 @@ videoFrameElement.addEventListener("dblclick", function (e) {
 
 videoFrameElement.addEventListener("touchstart", function (e) {
     toggleFullScreen();
-});
+}, { passive: true });
 
 function toggleFullScreen() {
     if (videoFrameElement.classList.contains("video-frame")) {

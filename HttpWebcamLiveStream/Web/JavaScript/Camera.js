@@ -1,5 +1,7 @@
 ﻿var webSocketVideoFrame;
 var frameTime;
+var videoFrameElement = document.querySelector("#videoFrame");
+var lastImageUrl;
 
 function GetVideoFrames() {
 
@@ -17,16 +19,20 @@ function GetVideoFrames() {
         var bytearray = new Uint8Array(event.data);
 
         var blob = new Blob([event.data], { type: "image/jpeg" });
-        var url = createObjectURL(blob);
-        document.querySelector("#videoFrame").src = url;
-
-        webSocketHelper.waitUntilWebsocketReady(function () {
-            webSocketVideoFrame.send(JSON.stringify({ command: "VideoFrame" }));
-        }, webSocketVideoFrame, 0);
-
+        lastImageUrl = createObjectURL(blob);
+        videoFrameElement.src = lastImageUrl;
+        
         frameTime = new Date().getTime();
     };
 }
+
+videoFrameElement.addEventListener("load", function (e) {
+    URL.revokeObjectURL(lastImageUrl);
+
+    webSocketHelper.waitUntilWebsocketReady(function () {
+        webSocketVideoFrame.send(JSON.stringify({ command: "VideoFrame" }));
+    }, webSocketVideoFrame, 0);
+});
 
 function createObjectURL(blob) {
     var URL = window.URL || window.webkitURL;

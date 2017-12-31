@@ -99,6 +99,14 @@ videoSubtypeElement.addEventListener("change", function () {
 });
 
 saveElement.addEventListener("click", function () {
+    SetVideoSetting();
+});
+
+saveElement.addEventListener("touchstart", function () {
+    SetVideoSetting();
+}, { passive: true });
+
+function SetVideoSetting() {
     var videoSubtype = videoSubtypeElement.options[videoSubtypeElement.options.selectedIndex].value;
     var videoResolution = videoResolutionElement.options[videoResolutionElement.options.selectedIndex].value;
     var videoQuality = videoQualityElement.options[videoQualityElement.options.selectedIndex].value;
@@ -109,6 +117,6 @@ saveElement.addEventListener("click", function () {
     saveRequest.open("GET", "SaveVideoSetting/<RequestBody>" + JSON.stringify(videoSetting) + "</RequestBody>", true);
     saveRequest.responseType = "json";
     saveRequest.send();
-});
+}
 
 videoSettingRequest.send();

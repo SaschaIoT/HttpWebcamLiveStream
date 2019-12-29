@@ -26,7 +26,9 @@ namespace HttpWebcamLiveStream.Web
         private IInputStream _inputStream;
         private IOutputStream _outputStream;
         private HttpServerRequest _httpServerRequest;
+        private byte[] _alreadySendFrame = null;
         private const uint BUFFER_SIZE = 3024;
+        private const int NEW_FRAME_AVAILABLE_CHECK_DURATION_MS = 5;
 
         //Dependencies
         private Camera _camera;
@@ -105,9 +107,18 @@ namespace HttpWebcamLiveStream.Web
             {
                 case "VideoFrame":
 
+                    // Wait frames available
                     SpinWait.SpinUntil(() => { return _camera != null && _camera.Frame != null; });
 
-                    var cameraFrame = _camera.Frame.ToArray();
+                    // Check new frame available
+                    while (_alreadySendFrame == _camera.Frame)
+                    {
+                        await Task.Delay(NEW_FRAME_AVAILABLE_CHECK_DURATION_MS);
+                    }
+
+                    _alreadySendFrame = _camera.Frame;
+
+                    var cameraFrame = _alreadySendFrame.ToArray();
                     await WriteFrame(cameraFrame, OpCode.Binary);
 
                     break;
@@ -172,8 +183,6 @@ namespace HttpWebcamLiveStream.Web
 
             while (true)
             {
-                await Task.Delay(1);
-
                 var readBytesTask = _inputStream.ReadAsync(buffer, BUFFER_SIZE, InputStreamOptions.Partial);
                 var timeout = TimeSpan.FromMilliseconds(5000);
                 await TaskHelper.WithTimeoutAfterStart(ct => readBytesTask.AsTask(ct), timeout);

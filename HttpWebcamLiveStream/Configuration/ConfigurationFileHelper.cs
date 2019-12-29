@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Windows.Graphics.Imaging;
 
 namespace HttpWebcamLiveStream.Configuration
 {
@@ -84,8 +85,8 @@ namespace HttpWebcamLiveStream.Configuration
             }
             else if (videoResolution == VideoResolution.SD800_600)
             {
-                videoResolutionWidthHeight.Width = 640;
-                videoResolutionWidthHeight.Height = 480;
+                videoResolutionWidthHeight.Width = 800;
+                videoResolutionWidthHeight.Height = 600;
             }
             else if (videoResolution == VideoResolution.SD640_480)
             {
@@ -94,6 +95,59 @@ namespace HttpWebcamLiveStream.Configuration
             }
 
             return videoResolutionWidthHeight;
+        }
+    }
+
+    public static class RotationHelper
+    {
+        private const int NONE = 1;
+        private const int CLOCKWISE_90_DEGREES = 2;
+        private const int CLOCKWISE_180_DEGREES = 3;
+        private const int CLOCKWISE_270_DEGREES = 4;
+
+
+        public static int Get(BitmapRotation rotation)
+        {
+            if (rotation == BitmapRotation.None)
+            {
+                return NONE;
+            }
+            else if (rotation == BitmapRotation.Clockwise90Degrees)
+            {
+                return CLOCKWISE_90_DEGREES;
+            }
+            else if (rotation == BitmapRotation.Clockwise180Degrees)
+            {
+                return CLOCKWISE_180_DEGREES;
+            }
+            else if (rotation == BitmapRotation.Clockwise270Degrees)
+            {
+                return CLOCKWISE_270_DEGREES;
+            }
+
+            return 1;
+        }
+
+        public static BitmapRotation Get(int rotation)
+        {
+            if (rotation == NONE)
+            {
+                return BitmapRotation.None;
+            }
+            else if (rotation == CLOCKWISE_90_DEGREES)
+            {
+                return BitmapRotation.Clockwise90Degrees;
+            }
+            else if (rotation == CLOCKWISE_180_DEGREES)
+            {
+                return BitmapRotation.Clockwise180Degrees;
+            }
+            else if (rotation == CLOCKWISE_270_DEGREES)
+            {
+                return BitmapRotation.Clockwise270Degrees;
+            }
+
+            return BitmapRotation.None;
         }
     }
 
@@ -109,5 +163,6 @@ namespace HttpWebcamLiveStream.Configuration
         public VideoSubtype VideoSubtype { get; set; }
         public double VideoQuality { get; set; }
         public int UsedThreads { get; set; }
+        public BitmapRotation Rotation { get; set; }
     }
 }

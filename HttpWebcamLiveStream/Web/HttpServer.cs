@@ -118,7 +118,8 @@ namespace HttpWebcamLiveStream.Web
                     VideoSubtype = VideoSubtypeHelper.Get(request.Body["VideoSubtype"].GetString()),
                     VideoResolution = (VideoResolution)request.Body["VideoResolution"].GetNumber(),
                     VideoQuality = request.Body["VideoQuality"].GetNumber(),
-                    UsedThreads = (int)request.Body["UsedThreads"].GetNumber()
+                    UsedThreads = (int)request.Body["UsedThreads"].GetNumber(),
+                    Rotation =  RotationHelper.Get((int)request.Body["Rotation"].GetNumber())
                 };
 
                 await ConfigurationFile.Write(videoSetting);

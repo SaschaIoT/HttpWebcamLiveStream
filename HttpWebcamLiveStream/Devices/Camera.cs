@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,10 +23,11 @@ namespace HttpWebcamLiveStream.Devices
     public class Camera
     {
         public byte[] Frame { get; set; }
-        
+
         private MediaCapture _mediaCapture;
         private MediaFrameReader _mediaFrameReader;
-        
+        private BitmapRotation _rotation = BitmapRotation.None;
+
         private BitmapPropertySet _imageQuality;
 
         private int _threadsCount = 0;
@@ -41,6 +41,7 @@ namespace HttpWebcamLiveStream.Devices
         {
             await CoreApplication.MainView.CoreWindow.Dispatcher.RunAndAwaitAsync(CoreDispatcherPriority.Normal, async () =>
             {
+                _rotation = videoSetting.Rotation;
                 _threadsCount = videoSetting.UsedThreads;
                 _stoppedThreads = videoSetting.UsedThreads;
 
@@ -56,11 +57,9 @@ namespace HttpWebcamLiveStream.Devices
 
                 var settings = new MediaCaptureInitializationSettings()
                 {
-                    SharingMode = MediaCaptureSharingMode.ExclusiveControl,
-
                     //With CPU the results contain always SoftwareBitmaps, otherwise with GPU
                     //they preferring D3DSurface
-                    MemoryPreference = MediaCaptureMemoryPreference.Cpu,
+                    MemoryPreference = MediaCaptureMemoryPreference.Auto,
 
                     //Capture only video, no audio
                     StreamingCaptureMode = StreamingCaptureMode.Video
@@ -73,7 +72,7 @@ namespace HttpWebcamLiveStream.Devices
 
                 videoDeviceController.DesiredOptimization = Windows.Media.Devices.MediaCaptureOptimization.Quality;
                 videoDeviceController.PrimaryUse = Windows.Media.Devices.CaptureUse.Video;
-                
+
                 //Set exposure (auto light adjustment)
                 if (_mediaCapture.VideoDeviceController.Exposure.Capabilities.Supported
                     && _mediaCapture.VideoDeviceController.Exposure.Capabilities.AutoModeSupported)
@@ -98,9 +97,6 @@ namespace HttpWebcamLiveStream.Devices
             });
         }
 
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private void GarbageCollectorCanWorkHere() { }
-
         private void ProcessFrames()
         {
             _stoppedThreads--;
@@ -109,52 +105,63 @@ namespace HttpWebcamLiveStream.Devices
             {
                 try
                 {
-                    GarbageCollectorCanWorkHere();
-                    
                     var frame = _mediaFrameReader.TryAcquireLatestFrame();
 
                     var frameDuration = new Stopwatch();
                     frameDuration.Start();
 
-                    if (frame == null
-                        || frame.VideoMediaFrame == null
-                        || frame.VideoMediaFrame.SoftwareBitmap == null)
+                    SoftwareBitmap frameBitmapTry = null;
+                    if (frame?.VideoMediaFrame?.Direct3DSurface != null)
+                    {
+                        frameBitmapTry = SoftwareBitmap.CreateCopyFromSurfaceAsync(frame.VideoMediaFrame.Direct3DSurface).AsTask().Result;
+                    }
+                    else if (frame?.VideoMediaFrame?.SoftwareBitmap != null)
+                    {
+                        frameBitmapTry = frame.VideoMediaFrame.SoftwareBitmap;
+                    }
+
+                    if (frameBitmapTry == null)
                         continue;
 
-                    using (var stream = new InMemoryRandomAccessStream())
+                    using (var frameBitmap = frameBitmapTry)
                     {
-                        using (var bitmap = SoftwareBitmap.Convert(frame.VideoMediaFrame.SoftwareBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore))
+                        using (var stream = new InMemoryRandomAccessStream())
                         {
-                            var imageTask = BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream, _imageQuality).AsTask();
-                            imageTask.Wait();
-                            var encoder = imageTask.Result;
-                            encoder.SetSoftwareBitmap(bitmap);
-
-                            ////Rotate image 180 degrees
-                            //var transform = encoder.BitmapTransform;
-                            //transform.Rotation = BitmapRotation.Clockwise180Degrees;
-
-                            var flushTask = encoder.FlushAsync().AsTask();
-                            flushTask.Wait();
-
-                            using (var asStream = stream.AsStream())
+                            using (var bitmap = SoftwareBitmap.Convert(frameBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore))
                             {
-                                asStream.Position = 0;
+                                var imageTask = BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream, _imageQuality).AsTask();
+                                imageTask.Wait();
+                                var encoder = imageTask.Result;
+                                encoder.SetSoftwareBitmap(bitmap);
 
-                                var image = new byte[asStream.Length];
-                                asStream.Read(image, 0, image.Length);
-
-                                lock (_lastFrameAddedLock)
+                                if (_rotation != BitmapRotation.None)
                                 {
-                                    if (_lastFrameAdded.Elapsed.Subtract(frameDuration.Elapsed) > TimeSpan.Zero)
-                                    {
-                                        Frame = image;
-
-                                        _lastFrameAdded = frameDuration;
-                                    }
+                                    var transform = encoder.BitmapTransform;
+                                    transform.Rotation = _rotation;
                                 }
 
-                                encoder = null;
+                                var flushTask = encoder.FlushAsync().AsTask();
+                                flushTask.Wait();
+
+                                using (var asStream = stream.AsStream())
+                                {
+                                    asStream.Position = 0;
+
+                                    var image = new byte[asStream.Length];
+                                    asStream.Read(image, 0, image.Length);
+
+                                    lock (_lastFrameAddedLock)
+                                    {
+                                        if (_lastFrameAdded.Elapsed.Subtract(frameDuration.Elapsed) > TimeSpan.Zero)
+                                        {
+                                            Frame = image;
+
+                                            _lastFrameAdded = frameDuration;
+                                        }
+                                    }
+
+                                    encoder = null;
+                                }
                             }
                         }
                     }
@@ -182,7 +189,7 @@ namespace HttpWebcamLiveStream.Devices
         public async Task Stop()
         {
             _stopThreads = true;
-            
+
             SpinWait.SpinUntil(() => { return _threadsCount == _stoppedThreads; });
 
             await _mediaFrameReader.StopAsync();

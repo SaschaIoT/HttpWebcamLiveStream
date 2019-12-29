@@ -16,8 +16,6 @@ function GetVideoFrames() {
 
     webSocketVideoFrame.onmessage = function () {
 
-        var bytearray = new Uint8Array(event.data);
-
         var blob = new Blob([event.data], { type: "image/jpeg" });
         lastImageUrl = createObjectURL(blob);
         videoFrameElement.src = lastImageUrl;

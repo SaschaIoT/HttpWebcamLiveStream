@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Windows.Data.Json;
+using Windows.Graphics.Imaging;
 using Windows.Media.Capture.Frames;
 using Windows.Storage;
 
@@ -30,7 +31,7 @@ namespace HttpWebcamLiveStream.Configuration
                     var videoResolution = (VideoResolution)videoResolutionId;
                     var videoResolutionWidthHeight = VideoResolutionWidthHeight.Get(videoResolution);
 
-                    var mediaFrameFormat = mediaFrameFormats.FirstOrDefault(m => m.Subtype == VideoSubtypeHelper.Get((VideoSubtype)videoSubType)
+                    var mediaFrameFormat = mediaFrameFormats.FirstOrDefault(m => m.Subtype == VideoSubtypeHelper.Get(videoSubType)
                                                                                  && m.VideoFormat.Width == videoResolutionWidthHeight.Width
                                                                                  && m.VideoFormat.Height == videoResolutionWidthHeight.Height);
 
@@ -73,7 +74,8 @@ namespace HttpWebcamLiveStream.Configuration
                             { "VideoResolution", JsonValue.CreateNumberValue((int)videoSetting.VideoResolution) },
                             { "VideoSubtype", JsonValue.CreateStringValue(VideoSubtypeHelper.Get(videoSetting.VideoSubtype)) },
                             { "VideoQuality", JsonValue.CreateNumberValue(videoSetting.VideoQuality) },
-                            { "UsedThreads", JsonValue.CreateNumberValue(videoSetting.UsedThreads) }
+                            { "UsedThreads", JsonValue.CreateNumberValue(videoSetting.UsedThreads) },
+                            { "Rotation", JsonValue.CreateNumberValue(RotationHelper.Get(videoSetting.Rotation)) }
                         };
 
             VideoSetting = configuration;
@@ -100,11 +102,12 @@ namespace HttpWebcamLiveStream.Configuration
                 var videoSubType = configuration["VideoSubtype"].GetString();
                 var videoQuality = configuration["VideoQuality"].GetNumber();
                 var usedThreads = configuration["UsedThreads"].GetNumber();
+                var rotation = configuration["Rotation"].GetNumber();
 
                 var mediaFrameFormat = mediaFrameFormats.Where(m => m.Subtype == videoSubType
                                                                 && m.VideoFormat.Width == videoResolutionWidthHeight.Width
                                                                 && m.VideoFormat.Height == videoResolutionWidthHeight.Height)
-                                                    .OrderByDescending(m => m.FrameRate.Numerator / m.FrameRate.Denominator)
+                                                    .OrderByDescending(m => m.FrameRate.Numerator / (decimal)m.FrameRate.Denominator)
                                                     .FirstOrDefault();
                 if (mediaFrameFormat != null)
                 {
@@ -113,18 +116,19 @@ namespace HttpWebcamLiveStream.Configuration
                         VideoResolution = videoResolution,
                         VideoSubtype = VideoSubtypeHelper.Get(videoSubType),
                         VideoQuality = videoQuality,
-                        UsedThreads = (int)usedThreads
+                        UsedThreads = (int)usedThreads,
+                        Rotation = RotationHelper.Get((int)rotation)
                     };
                 }
             }
             else
             {
-                for (int videoSubType = 0; videoSubType <= 2; videoSubType++)
+                for (var videoSubType = 0; videoSubType <= 2; videoSubType++)
                 {
                     if (videoSetting != null)
                         break;
 
-                    for (int videoResolutionId = 4; videoResolutionId >= 0; videoResolutionId--)
+                    for (var videoResolutionId = 4; videoResolutionId >= 0; videoResolutionId--)
                     {
                         var videoResolutionLowWidthHeight = VideoResolutionWidthHeight.Get((VideoResolution)videoResolutionId);
 
@@ -141,7 +145,8 @@ namespace HttpWebcamLiveStream.Configuration
                                 VideoResolution = VideoResolution.SD640_480,
                                 VideoSubtype = (VideoSubtype)videoSubType,
                                 VideoQuality = 0.6,
-                                UsedThreads = 1
+                                UsedThreads = 3,
+                                Rotation = BitmapRotation.None
                             };
 
                             break;
@@ -157,7 +162,8 @@ namespace HttpWebcamLiveStream.Configuration
                     { "VideoResolution", JsonValue.CreateNumberValue((int)videoSetting.VideoResolution) },
                     { "VideoSubtype", JsonValue.CreateStringValue(VideoSubtypeHelper.Get(videoSetting.VideoSubtype)) },
                     { "VideoQuality", JsonValue.CreateNumberValue(videoSetting.VideoQuality) },
-                    { "UsedThreads", JsonValue.CreateNumberValue(videoSetting.UsedThreads) }
+                    { "UsedThreads", JsonValue.CreateNumberValue(videoSetting.UsedThreads) },
+                    { "Rotation", JsonValue.CreateNumberValue(RotationHelper.Get(videoSetting.Rotation)) }
                 };
 
                 return videoSetting;

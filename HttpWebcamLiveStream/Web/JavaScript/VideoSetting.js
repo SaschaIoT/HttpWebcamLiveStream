@@ -4,6 +4,7 @@ var videoResolutionElement = document.getElementById("videoResolution");
 var videoSubtypeElement = document.getElementById("videoSubtype");
 var videoQualityElement = document.getElementById("videoQuality");
 var usedThreadsElement = document.getElementById("usedThreads");
+var rotationElement = document.getElementById("rotation");
 var saveElement = document.getElementById("save");
 
 var videoSettingRequest = new XMLHttpRequest();
@@ -11,11 +12,12 @@ videoSettingRequest.open("GET", "VideoSetting", true);
 videoSettingRequest.responseType = "json";
 videoSettingRequest.onload = function () {
     var status = videoSettingRequest.status;
-    if (status == 200) {
+    if (status === 200) {
         var videoSetting = videoSettingRequest.response;
 
         document.querySelector('#videoQuality > option[value="' + videoSetting.VideoQuality.toString() + '"]').selected = true;
         document.querySelector('#usedThreads > option[value="' + videoSetting.UsedThreads.toString() + '"]').selected = true;
+        document.querySelector('#rotation > option[value="' + videoSetting.Rotation.toString() + '"]').selected = true;
         
         var supportedVideoSettingRequest = new XMLHttpRequest();
         supportedVideoSettingRequest.open("GET", "SupportedVideoSettings", true);
@@ -62,7 +64,7 @@ function SetVideoResolutions(videoSubtype) {
 
     var containOldVideoResolution = videoResolution === null ? false : videoResolutions.filter(function (svs) { return svs.toString() === videoResolution; }).length == 1;
 
-    videoResolutions.forEach(function (videoResolution) {
+    videoResolutions.forEach(function(videoResolution) {
 
         var videoSubtypeVideoResolution = document.createElement('option');
         videoSubtypeVideoResolution.value = videoResolution;
@@ -77,19 +79,19 @@ function SetVideoResolutions(videoSubtype) {
 
 function GetVideoResolutionName(videoResolution) {
 
-    if (videoResolution == 0) {
+    if (videoResolution === 0) {
         return "HD1080p";
     }
-    else if (videoResolution == 1) {
+    else if (videoResolution === 1) {
         return "HD720p";
     }
-    else if (videoResolution == 2) {
+    else if (videoResolution === 2) {
         return "SD1024_768";
     }
-    else if (videoResolution == 3) {
+    else if (videoResolution === 3) {
         return "SD800_600";
     }
-    else if (videoResolution == 4) {
+    else if (videoResolution === 4) {
         return "SD640_480";
     }
 }
@@ -111,9 +113,10 @@ function SetVideoSetting() {
     var videoResolution = videoResolutionElement.options[videoResolutionElement.options.selectedIndex].value;
     var videoQuality = videoQualityElement.options[videoQualityElement.options.selectedIndex].value;
     var usedThreads = usedThreadsElement.options[usedThreadsElement.options.selectedIndex].value;
+    var rotation = usedThreadsElement.options[rotationElement.options.selectedIndex].value;
 
     var saveRequest = new XMLHttpRequest();
-    var videoSetting = { "VideoSubtype": videoSubtype, "VideoResolution": parseInt(videoResolution, 10), "VideoQuality": parseFloat(videoQuality), "UsedThreads": parseInt(usedThreads, 10) };
+    var videoSetting = { "VideoSubtype": videoSubtype, "VideoResolution": parseInt(videoResolution, 10), "VideoQuality": parseFloat(videoQuality), "UsedThreads": parseInt(usedThreads, 10), "Rotation": parseInt(rotation, 10) };
     saveRequest.open("GET", "SaveVideoSetting/<RequestBody>" + JSON.stringify(videoSetting) + "</RequestBody>", true);
     saveRequest.responseType = "json";
     saveRequest.send();

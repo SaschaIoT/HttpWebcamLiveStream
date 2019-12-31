@@ -21,15 +21,15 @@ function GetVideoFrames() {
         videoFrameElement.src = lastImageUrl;
         
         frameTime = new Date().getTime();
+
+        webSocketHelper.waitUntilWebsocketReady(function () {
+            webSocketVideoFrame.send(JSON.stringify({ command: "VideoFrame" }));
+        }, webSocketVideoFrame, 0);
     };
 }
 
 videoFrameElement.addEventListener("load", function (e) {
     URL.revokeObjectURL(lastImageUrl);
-
-    webSocketHelper.waitUntilWebsocketReady(function () {
-        webSocketVideoFrame.send(JSON.stringify({ command: "VideoFrame" }));
-    }, webSocketVideoFrame, 0);
 });
 
 function createObjectURL(blob) {

@@ -111,7 +111,7 @@ namespace HttpWebcamLiveStream.Web
             //Set video settings
             else if (relativeUrlLower.StartsWith("/savevideosetting"))
             {
-                await _camera.Stop();
+                await _camera.StopAsync();
 
                 var videoSetting = new VideoSetting
                 {

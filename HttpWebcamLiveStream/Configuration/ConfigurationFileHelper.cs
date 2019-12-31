@@ -105,7 +105,6 @@ namespace HttpWebcamLiveStream.Configuration
         private const int CLOCKWISE_180_DEGREES = 3;
         private const int CLOCKWISE_270_DEGREES = 4;
 
-
         public static int Get(BitmapRotation rotation)
         {
             if (rotation == BitmapRotation.None)
@@ -125,7 +124,7 @@ namespace HttpWebcamLiveStream.Configuration
                 return CLOCKWISE_270_DEGREES;
             }
 
-            return 1;
+            return NONE;
         }
 
         public static BitmapRotation Get(int rotation)

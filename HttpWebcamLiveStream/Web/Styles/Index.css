@@ -63,18 +63,23 @@
 
 .video-settings {
     margin: 0px auto;
-    width: 270px;
+    width: 310px;
     color: black;
     font-size: 14px;
 }
 
 .video-settings select {
-    width: 140px;
-    border-radius:4px;
-    border:1px solid #AAAAAA;
+    width: 180px;
+    border-radius: 4px;
+    border: 1px solid #AAAAAA;
+}
+
+.video-settings tr:last-child td:last-child {
+    text-align: right;
+    padding-top: 15px;
 }
 
 #save {
-    border-radius:4px;
-    border:1px solid #AAAAAA;
+    border-radius: 4px;
+    border: 1px solid #AAAAAA;
 }

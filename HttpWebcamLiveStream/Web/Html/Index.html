@@ -40,13 +40,14 @@
                 </td>
             </tr>
             <tr>
-                <td>Used threads: </td>
+                <td>Event based/<br />used threads: </td>
                 <td>
                     <select id="usedThreads">
-                        <option value="1">1 Thread</option>
-                        <option value="2">2 Threads</option>
-                        <option value="3">3 Threads</option>
-                        <option value="4">4 Threads</option>
+                        <option value="0">Event based (recommended)</option>
+                        <option value="1">1 thread</option>
+                        <option value="2">2 threads</option>
+                        <option value="3">3 threads</option>
+                        <option value="4">4 threads</option>
                     </select>
                 </td>
             </tr>
@@ -61,9 +62,12 @@
                     </select>
                 </td>
             </tr>
+            <tr>
+                <td colspan="2">
+                    <input id="save" type="button" value="Save" />
+                </td>
+            </tr>
         </table>
-
-        <input id="save" type="button" value="Save" />
 
         <br />
         <br />

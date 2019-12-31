@@ -113,7 +113,7 @@ function SetVideoSetting() {
     var videoResolution = videoResolutionElement.options[videoResolutionElement.options.selectedIndex].value;
     var videoQuality = videoQualityElement.options[videoQualityElement.options.selectedIndex].value;
     var usedThreads = usedThreadsElement.options[usedThreadsElement.options.selectedIndex].value;
-    var rotation = usedThreadsElement.options[rotationElement.options.selectedIndex].value;
+    var rotation = rotationElement.options[rotationElement.options.selectedIndex].value;
 
     var saveRequest = new XMLHttpRequest();
     var videoSetting = { "VideoSubtype": videoSubtype, "VideoResolution": parseInt(videoResolution, 10), "VideoQuality": parseFloat(videoQuality), "UsedThreads": parseInt(usedThreads, 10), "Rotation": parseInt(rotation, 10) };

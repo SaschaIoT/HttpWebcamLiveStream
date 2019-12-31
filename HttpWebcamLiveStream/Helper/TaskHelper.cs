@@ -10,7 +10,6 @@ namespace HttpWebcamLiveStream.Helper
         {
             var source = new CancellationTokenSource();
             var task = operation(source.Token);
-            //After task starts timeout begin to tick
             source.CancelAfter(timeout);
             await task;
         }
@@ -19,7 +18,6 @@ namespace HttpWebcamLiveStream.Helper
         {
             var source = new CancellationTokenSource();
             var task = operation(source.Token);
-            //After task starts timeout begin to tick
             source.CancelAfter(timeout);
             await task;
         }
